@@ -106,3 +106,13 @@ pub struct SignSSHKeyResponse {
     pub serial_number: String,
     pub signed_key: String,
 }
+
+/// Response from executing
+/// [IssueSSHPairRequest][crate::api::ssh::requests::IssueSSHPairRequest]
+#[derive(Deserialize, Debug, Serialize)]
+pub struct IssueSSHPairResponse {
+    pub serial_number: String,
+    pub signed_key: String,
+    pub private_key: String,
+    pub private_key_type: String,
+}

@@ -1,6 +1,6 @@
 use crate::api;
-use crate::api::ssh::requests::{GenerateSSHCredsRequest, VerifySSHOTPRequest};
-use crate::api::ssh::responses::{GenerateSSHCredsResponse, VerifySSHOTPResponse};
+use crate::api::ssh::requests::{GenerateSSHCredsRequest, VerifySSHOTPRequest, IssueSSHPairRequest};
+use crate::api::ssh::responses::{GenerateSSHCredsResponse, VerifySSHOTPResponse, IssueSSHPairResponse};
 use crate::client::Client;
 use crate::error::ClientError;
 
@@ -47,10 +47,10 @@ pub mod ca {
     use crate::api;
     use crate::api::ssh::requests::{
         DeleteCAInfoRequest, ReadPublicKeyRequest, SignSSHKeyRequest, SignSSHKeyRequestBuilder,
-        SubmitCAInfoRequest,
+        SubmitCAInfoRequest, IssueSSHPairRequest, IssueSSHPairRequestBuilder,
     };
     use crate::api::ssh::responses::{
-        ReadPublicKeyResponse, SignSSHKeyResponse, SubmitCAInfoResponse,
+        ReadPublicKeyResponse, SignSSHKeyResponse, SubmitCAInfoResponse, IssueSSHPairResponse
     };
     use crate::client::Client;
     use crate::error::ClientError;
@@ -112,6 +112,26 @@ pub mod ca {
             .mount(mount)
             .name(name)
             .public_key(public_key)
+            .build()
+            .unwrap();
+        api::exec_with_result(client, endpoint).await
+    }
+
+    /// Issue a new public-private key pair.
+    ///
+    /// See [SignSSHKeyRequest]
+    #[instrument(skip(client, opts), err)]
+    pub async fn issue(
+        client: &impl Client,
+        mount: &str,
+        name: &str,
+        opts: Option<&mut IssueSSHPairRequestBuilder>,
+    ) -> Result<IssueSSHPairResponse, ClientError> {
+        let mut t = IssueSSHPairRequest::builder();
+        let endpoint = opts
+            .unwrap_or(&mut t)
+            .mount(mount)
+            .name(name)
             .build()
             .unwrap();
         api::exec_with_result(client, endpoint).await

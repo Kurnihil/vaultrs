@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::responses::{
     GenerateSSHCredsResponse, ListRolesByIPResponse, ListRolesResponse,
     ListZeroAddressRolesResponse, ReadPublicKeyResponse, ReadRoleResponse, SignSSHKeyResponse,
-    SubmitCAInfoResponse, VerifySSHOTPResponse,
+    SubmitCAInfoResponse, VerifySSHOTPResponse, IssueSSHPairResponse,
 };
 use rustify_derive::Endpoint;
 
@@ -367,6 +367,38 @@ pub struct SignSSHKeyRequest {
     pub extensions: Option<HashMap<String, String>>,
     pub key_id: Option<String>,
     pub public_key: String,
+    pub ttl: Option<String>,
+    pub valid_principals: Option<String>,
+}
+
+/// ## Issue new SSH Key Pair
+/// This endpoint issues an SSH key pair based on the supplied parameters,
+/// subject to the restrictions contained in the role named in the endpoint.
+///
+/// * Path: {self.mount}/sign/{self.name}
+/// * Method: POST
+/// * Response: [IssueSSHPairResponse]
+/// * Reference: https://www.vaultproject.io/api-docs/secret/ssh#sign-ssh-key
+#[derive(Builder, Debug, Default, Endpoint)]
+#[endpoint(
+    path = "{self.mount}/issue/{self.name}",
+    method = "POST",
+    response = "IssueSSHPairResponse",
+    builder = "true"
+)]
+#[builder(setter(into, strip_option), default)]
+pub struct IssueSSHPairRequest {
+    #[endpoint(skip)]
+    pub mount: String,
+    #[endpoint(skip)]
+    pub name: String,
+
+    pub cert_type: Option<String>,
+    pub critical_options: Option<HashMap<String, String>>,
+    pub extensions: Option<HashMap<String, String>>,
+    pub key_id: Option<String>,
+    pub key_type: Option<String>,
+    pub key_bits: Option<u64>,
     pub ttl: Option<String>,
     pub valid_principals: Option<String>,
 }
