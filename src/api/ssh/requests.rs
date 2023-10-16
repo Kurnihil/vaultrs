@@ -378,7 +378,7 @@ pub struct SignSSHKeyRequest {
 /// * Path: {self.mount}/sign/{self.name}
 /// * Method: POST
 /// * Response: [IssueSSHPairResponse]
-/// * Reference: https://www.vaultproject.io/api-docs/secret/ssh#sign-ssh-key
+/// * Reference: https://www.vaultproject.io/api-docs/secret/ssh#generate-certificate-and-key
 #[derive(Builder, Debug, Default, Endpoint)]
 #[endpoint(
     path = "{self.mount}/issue/{self.name}",
