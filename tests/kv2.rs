@@ -5,6 +5,7 @@ mod common;
 
 use common::{VaultServer, VaultServerHelper};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use test_log::test;
 use vaultrs::api::kv2::requests::{SetSecretMetadataRequest, SetSecretRequestOptions};
 use vaultrs::client::Client;
@@ -22,11 +23,11 @@ fn test() {
         // Test set / read
         test_list(&client, &endpoint).await;
         test_read(&client, &endpoint).await;
-        test_read_metadata(&client, &endpoint).await;
         test_read_version(&client, &endpoint).await;
         test_set(&client, &endpoint).await;
         test_set_with_compare_and_swap(&client, &endpoint).await;
         test_set_metadata(&client, &endpoint).await;
+        test_read_metadata(&client, &endpoint).await;
 
         // Test delete
         test_delete_latest(&client, &endpoint).await;
@@ -44,7 +45,43 @@ fn test() {
         // Test config
         crate::config::test_set(&client, &endpoint).await;
         crate::config::test_read(&client, &endpoint).await;
+
+        // Test URL encoding works as expected
+        test_kv2_url_encoding(&server).await;
     });
+}
+
+async fn test_kv2_url_encoding(server: &VaultServer) {
+    let client = server.client();
+
+    debug!("setting up kv2 auth engine");
+    let path = "path/to/secret engine";
+    let name = "path/to/some secret/password name with whitespace";
+    let secret = TestSecret {
+        key: "mykey".to_string(),
+        password: "supersecret".to_string(),
+    };
+    let endpoint = SecretEndpoint {
+        path: path.to_string(),
+        name: name.to_string(),
+        secret,
+    };
+
+    // Mount the KV2 engine
+    server.mount_secret(&client, path, "kv-v2").await.unwrap();
+
+    // Create a test secret
+    create(&client, &endpoint).await.unwrap();
+
+    let secrets = kv2::list(&client, path, "path/to/some secret/")
+        .await
+        .unwrap();
+    assert_eq!(secrets.len(), 1);
+    assert_eq!(secrets.first().unwrap(), "password name with whitespace");
+
+    let res: Result<TestSecret, _> = kv2::read(&client, path, name).await;
+    assert!(res.is_ok());
+    assert_eq!(res.unwrap().key, endpoint.secret.key);
 }
 
 async fn test_delete_latest(client: &impl Client, endpoint: &SecretEndpoint) {
@@ -94,7 +131,9 @@ async fn test_read(client: &impl Client, endpoint: &SecretEndpoint) {
 async fn test_read_metadata(client: &impl Client, endpoint: &SecretEndpoint) {
     let res = kv2::read_metadata(client, endpoint.path.as_str(), endpoint.name.as_str()).await;
     assert!(res.is_ok());
-    assert!(!res.unwrap().versions.is_empty());
+    let response = res.unwrap();
+    assert!(!response.versions.is_empty());
+    assert!(!response.custom_metadata.unwrap().is_empty());
 }
 
 async fn test_read_version(client: &impl Client, endpoint: &SecretEndpoint) {
@@ -135,7 +174,14 @@ async fn test_set_metadata(client: &impl Client, endpoint: &SecretEndpoint) {
         client,
         endpoint.path.as_str(),
         endpoint.name.as_str(),
-        Some(SetSecretMetadataRequest::builder().delete_version_after("1h")),
+        Some(
+            SetSecretMetadataRequest::builder()
+                .delete_version_after("1h")
+                .custom_metadata(HashMap::from([
+                    ("key1".to_string(), "foo".to_string()),
+                    ("key2".to_string(), "bar".to_string()),
+                ])),
+        ),
     )
     .await;
     assert!(res.is_ok());
